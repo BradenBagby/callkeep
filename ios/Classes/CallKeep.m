@@ -546,7 +546,7 @@ contactIdentifier:(NSString * _Nullable)contactIdentifier
         if (error == nil) {
             // Workaround per https://forums.developer.apple.com/message/169511
             if ([callKeep lessThanIos10_2]) {
-                [callKeep configureAudioSession];
+                [callKeep configureAudioSession:true];
             }
         }
         if (completion != nil) {
@@ -633,14 +633,16 @@ contactIdentifier:(NSString * _Nullable)contactIdentifier
     return providerConfiguration;
 }
 
-- (void)configureAudioSession
+- (void)configureAudioSession:(bool)inbound
 {
 #ifdef DEBUG
     NSLog(@"[CallKeep][configureAudioSession] Activating audio session");
 #endif
     
     AVAudioSession* audioSession = [AVAudioSession sharedInstance];
-    [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord withOptions:AVAudioSessionCategoryOptionAllowBluetooth error:nil];
+
+    // some bug where sometimes when screen is locked, audio wont work. This fixes it for now
+    [audioSession setCategory:(inbound ? AVAudioSessionCategoryPlayback: AVAudioSessionCategoryPlayAndRecord) withOptions:AVAudioSessionCategoryOptionAllowBluetooth error:nil];
     
     [audioSession setMode:AVAudioSessionModeVoiceChat error:nil];
     
@@ -763,7 +765,7 @@ continueUserActivity:(NSUserActivity *)userActivity
     NSLog(@"[CallKeep][CXProviderDelegate][provider:performStartCallAction]");
 #endif
     //do this first, audio sessions are flakey
-    [self configureAudioSession];
+    [self configureAudioSession:false];
     //tell the JS to actually make the call
     [self sendEventWithNameWrapper:CallKeepDidReceiveStartCallAction body:@{ @"callUUID": [action.callUUID.UUIDString lowercaseString], @"handle": action.handle.value }];
     [action fulfill];
@@ -789,7 +791,7 @@ continueUserActivity:(NSUserActivity *)userActivity
 #ifdef DEBUG
     NSLog(@"[CallKeep][CXProviderDelegate][provider:performAnswerCallAction]");
 #endif
-    [self configureAudioSession];
+    [self configureAudioSession:true];
     [self sendEventWithNameWrapper:CallKeepPerformAnswerCallAction body:@{ @"callUUID": [action.callUUID.UUIDString lowercaseString] }];
     [action fulfill];
 }
@@ -851,7 +853,9 @@ continueUserActivity:(NSUserActivity *)userActivity
     };
     [[NSNotificationCenter defaultCenter] postNotificationName:AVAudioSessionInterruptionNotification object:nil userInfo:userInfo];
     
-    [self configureAudioSession];
+    // dont know if inbound so we just assume if screen is locked we are inbound. Really doesnt matter
+    bool screenUnlocked = [[UIApplication sharedApplication] isProtectedDataAvailable];
+    [self configureAudioSession:!screenUnlocked];
     [self sendEventWithNameWrapper:CallKeepDidActivateAudioSession body:@{}];
 }
 
