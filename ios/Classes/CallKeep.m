@@ -635,6 +635,7 @@ contactIdentifier:(NSString * _Nullable)contactIdentifier
 
 - (void)configureAudioSession:(bool)inbound
 {
+    if(!inbound) return;
 #ifdef DEBUG
     NSLog(@"[CallKeep][configureAudioSession] Activating audio session");
 #endif
