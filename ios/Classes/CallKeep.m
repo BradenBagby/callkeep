@@ -232,7 +232,7 @@ static CXProvider* sharedProvider;
     AVAudioSession *audioSession = [AVAudioSession sharedInstance];
         NSError* err;
         NSLog(@"configuring audio session..");
-        [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord error:&err];
+        [audioSession setCategory:AVAudioSessionCategoryPlayback error:&err];
         if (err) {
             NSLog(@"error setting audio category %@",err);
         }
@@ -875,7 +875,7 @@ continueUserActivity:(NSUserActivity *)userActivity
         AVAudioSessionInterruptionOptionKey: [NSNumber numberWithInt:AVAudioSessionInterruptionOptionShouldResume]
     };
     [[NSNotificationCenter defaultCenter] postNotificationName:AVAudioSessionInterruptionNotification object:nil userInfo:userInfo];
-    
+    [self configureAudioSession:true];
     [self sendEventWithNameWrapper:CallKeepDidActivateAudioSession body:@{}];
 }
 
