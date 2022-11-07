@@ -7,6 +7,7 @@
 //
 #import <objc/runtime.h>
 #import <AVFoundation/AVFoundation.h>
+#import <WebRTC/WebRTC.h>
 
 #import "CallKeep.h"
 
@@ -224,6 +225,33 @@ static CXProvider* sharedProvider;
 - (void)pushRegistry:(PKPushRegistry *)registry didReceiveIncomingPushWithPayload:(PKPushPayload *)payload forType:(PKPushType)type withCompletionHandler:(nonnull void (^)(void))completion {
     // Process the received push
     NSLog(@"didReceiveIncomingPushWithPayload payload = %@", payload.type);
+    
+    [RTCAudioSession sharedInstance].useManualAudio = true;
+    [RTCAudioSession sharedInstance].isAudioEnabled = false;
+    
+    AVAudioSession *audioSession = [AVAudioSession sharedInstance];
+        NSError* err;
+        NSLog(@"configuring audio session..");
+        [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord error:&err];
+        if (err) {
+            NSLog(@"error setting audio category %@",err);
+        }
+        [audioSession setMode:AVAudioSessionModeVoiceChat error:&err];
+        if (err) {
+            NSLog(@"error setting audio Mode %@",err);
+        }
+        double sampleRate = 44100.0;
+        [audioSession setPreferredSampleRate:sampleRate error:&err];
+        if (err) {
+            NSLog(@"Error %ld, %@",(long)err.code, err.localizedDescription);
+        }
+        
+        NSTimeInterval bufferDuration = .005;
+        [audioSession setPreferredIOBufferDuration:bufferDuration error:&err];
+        if (err) {
+            NSLog(@"Error %ld, %@",(long)err.code, err.localizedDescription);
+        }
+    
     /* payload example.
     {
         "uuid": "xxxxx-xxxxx-xxxxx-xxxxx",
@@ -530,7 +558,6 @@ contactIdentifier:(NSString * _Nullable)contactIdentifier
     callUpdate.supportsUngrouping = NO;
     callUpdate.hasVideo = hasVideo;
     callUpdate.localizedCallerName = localizedCallerName;
-    
     [CallKeep initCallKitProvider];
     [sharedProvider reportNewIncomingCallWithUUID:uuid update:callUpdate completion:^(NSError * _Nullable error) {
         CallKeep *callKeep = [CallKeep allocWithZone: nil];
@@ -543,12 +570,6 @@ contactIdentifier:(NSString * _Nullable)contactIdentifier
             @"fromPushKit": @(fromPushKit),
             @"payload": payload ? payload : @"",
         }];
-        if (error == nil) {
-            // Workaround per https://forums.developer.apple.com/message/169511
-            if ([callKeep lessThanIos10_2]) {
-                [callKeep configureAudioSession:true];
-            }
-        }
         if (completion != nil) {
             completion();
         }
@@ -633,16 +654,12 @@ contactIdentifier:(NSString * _Nullable)contactIdentifier
     return providerConfiguration;
 }
 
-- (void)configureAudioSession:(bool)inbound
+- (void)configureAudioSession:(bool)setActive
 {
-#ifdef DEBUG
-    NSLog(@"[CallKeep][configureAudioSession] Activating audio session");
-#endif
+    NSLog(@"[CallKeep][configureAudioSession] Configuring audio session");
     
     AVAudioSession* audioSession = [AVAudioSession sharedInstance];
-
-    // some bug where sometimes when screen is locked, audio wont work. This fixes it for now
-    [audioSession setCategory:(inbound ? AVAudioSessionCategoryPlayback: AVAudioSessionCategoryPlayAndRecord) withOptions:AVAudioSessionCategoryOptionAllowBluetooth error:nil];
+    [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord withOptions:AVAudioSessionCategoryOptionAllowBluetooth error:nil];
     
     [audioSession setMode:AVAudioSessionModeVoiceChat error:nil];
     
@@ -651,7 +668,9 @@ contactIdentifier:(NSString * _Nullable)contactIdentifier
     
     NSTimeInterval bufferDuration = .005;
     [audioSession setPreferredIOBufferDuration:bufferDuration error:nil];
-    [audioSession setActive:TRUE error:nil];
+    if(setActive){
+        [audioSession setActive:TRUE error:nil];
+    }
 }
 
 + (BOOL)application:(UIApplication *)application
@@ -765,7 +784,7 @@ continueUserActivity:(NSUserActivity *)userActivity
     NSLog(@"[CallKeep][CXProviderDelegate][provider:performStartCallAction]");
 #endif
     //do this first, audio sessions are flakey
-    [self configureAudioSession:false];
+    [self configureAudioSession:true];
     //tell the JS to actually make the call
     [self sendEventWithNameWrapper:CallKeepDidReceiveStartCallAction body:@{ @"callUUID": [action.callUUID.UUIDString lowercaseString], @"handle": action.handle.value }];
     [action fulfill];
@@ -791,7 +810,6 @@ continueUserActivity:(NSUserActivity *)userActivity
 #ifdef DEBUG
     NSLog(@"[CallKeep][CXProviderDelegate][provider:performAnswerCallAction]");
 #endif
-    [self configureAudioSession:true];
     [self sendEventWithNameWrapper:CallKeepPerformAnswerCallAction body:@{ @"callUUID": [action.callUUID.UUIDString lowercaseString] }];
     [action fulfill];
 }
@@ -846,6 +864,11 @@ continueUserActivity:(NSUserActivity *)userActivity
 #ifdef DEBUG
     NSLog(@"[CallKeep][CXProviderDelegate][provider:didActivateAudioSession]");
 #endif
+    /// report to WebRTC
+    RTCAudioSession *session = [RTCAudioSession sharedInstance];
+    [session audioSessionDidActivate:audioSession];
+    session.isAudioEnabled = true;
+    
     NSDictionary *userInfo
     = @{
         AVAudioSessionInterruptionTypeKey: [NSNumber numberWithInt:AVAudioSessionInterruptionTypeEnded],
@@ -853,9 +876,6 @@ continueUserActivity:(NSUserActivity *)userActivity
     };
     [[NSNotificationCenter defaultCenter] postNotificationName:AVAudioSessionInterruptionNotification object:nil userInfo:userInfo];
     
-    // dont know if inbound so we just assume if screen is locked we are inbound. Really doesnt matter
-    bool screenUnlocked = [[UIApplication sharedApplication] isProtectedDataAvailable];
-    [self configureAudioSession:!screenUnlocked];
     [self sendEventWithNameWrapper:CallKeepDidActivateAudioSession body:@{}];
 }
 
@@ -864,6 +884,10 @@ continueUserActivity:(NSUserActivity *)userActivity
 #ifdef DEBUG
     NSLog(@"[CallKeep][CXProviderDelegate][provider:didDeactivateAudioSession]");
 #endif
+    // report to WebRTC
+    RTCAudioSession *session = [RTCAudioSession sharedInstance];
+    [session audioSessionDidDeactivate:audioSession];
+    
     [self sendEventWithNameWrapper:CallKeepDidDeactivateAudioSession body:@{}];
 }
 
