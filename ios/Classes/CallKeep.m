@@ -25,7 +25,7 @@ static NSString *const CallKeepProviderReset = @"CallKeepProviderReset";
 static NSString *const CallKeepCheckReachability = @"CallKeepCheckReachability";
 static NSString *const CallKeepDidLoadWithEvents = @"CallKeepDidLoadWithEvents";
 static NSString *const CallKeepPushKitToken = @"CallKeepPushKitToken";
-
+static NSString *const CallKeepBBBBBBBBB = @"BBBBBBBB";
 @implementation CallKeep
 {
     NSOperatingSystemVersion _version;
@@ -225,6 +225,7 @@ static CXProvider* sharedProvider;
 - (void)pushRegistry:(PKPushRegistry *)registry didReceiveIncomingPushWithPayload:(PKPushPayload *)payload forType:(PKPushType)type withCompletionHandler:(nonnull void (^)(void))completion {
     // Process the received push
     NSLog(@"didReceiveIncomingPushWithPayload payload = %@", payload.type);
+    [self sendEventWithNameWrapper:CallKeepBBBBBBBBB body:[NSString stringWithFormat:@"Received payload"]];
     
     [RTCAudioSession sharedInstance].useManualAudio = true;
     [RTCAudioSession sharedInstance].isAudioEnabled = false;
@@ -232,23 +233,27 @@ static CXProvider* sharedProvider;
     AVAudioSession *audioSession = [AVAudioSession sharedInstance];
         NSError* err;
         NSLog(@"configuring audio session..");
-        [audioSession setCategory:AVAudioSessionCategoryPlayback error:&err];
+        [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord error:&err];
         if (err) {
+            [self sendEventWithNameWrapper:CallKeepBBBBBBBBB body:[NSString stringWithFormat:@"failed to set audio category %@", err]];
             NSLog(@"error setting audio category %@",err);
         }
         [audioSession setMode:AVAudioSessionModeVoiceChat error:&err];
         if (err) {
+            [self sendEventWithNameWrapper:CallKeepBBBBBBBBB body:[NSString stringWithFormat:@"failed to set audio mode %@", err]];
             NSLog(@"error setting audio Mode %@",err);
         }
         double sampleRate = 44100.0;
         [audioSession setPreferredSampleRate:sampleRate error:&err];
         if (err) {
+            [self sendEventWithNameWrapper:CallKeepBBBBBBBBB body:[NSString stringWithFormat:@"failed to set ample rate %@", err]];
             NSLog(@"Error %ld, %@",(long)err.code, err.localizedDescription);
         }
         
         NSTimeInterval bufferDuration = .005;
         [audioSession setPreferredIOBufferDuration:bufferDuration error:&err];
         if (err) {
+            [self sendEventWithNameWrapper:CallKeepBBBBBBBBB body:[NSString stringWithFormat:@"failed to set io buffer %@", err]];
             NSLog(@"Error %ld, %@",(long)err.code, err.localizedDescription);
         }
     
@@ -657,6 +662,7 @@ contactIdentifier:(NSString * _Nullable)contactIdentifier
 - (void)configureAudioSession:(bool)setActive
 {
     NSLog(@"[CallKeep][configureAudioSession] Configuring audio session");
+    [self sendEventWithNameWrapper:CallKeepBBBBBBBBB body:[NSString stringWithFormat:@"Configure audio session. SetActive:%s", setActive ? "true" : "false"]];
     
     AVAudioSession* audioSession = [AVAudioSession sharedInstance];
     [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord withOptions:AVAudioSessionCategoryOptionAllowBluetooth error:nil];
@@ -811,7 +817,9 @@ continueUserActivity:(NSUserActivity *)userActivity
     NSLog(@"[CallKeep][CXProviderDelegate][provider:performAnswerCallAction]");
 #endif
     [self sendEventWithNameWrapper:CallKeepPerformAnswerCallAction body:@{ @"callUUID": [action.callUUID.UUIDString lowercaseString] }];
-    [action fulfill];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [action fulfill];
+    });
 }
 
 // Ending incoming call
@@ -875,7 +883,6 @@ continueUserActivity:(NSUserActivity *)userActivity
         AVAudioSessionInterruptionOptionKey: [NSNumber numberWithInt:AVAudioSessionInterruptionOptionShouldResume]
     };
     [[NSNotificationCenter defaultCenter] postNotificationName:AVAudioSessionInterruptionNotification object:nil userInfo:userInfo];
-    [self configureAudioSession:true];
     [self sendEventWithNameWrapper:CallKeepDidActivateAudioSession body:@{}];
 }
 
