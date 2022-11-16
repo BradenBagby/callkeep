@@ -16,7 +16,7 @@ A new flutter plugin project.
   s.source_files = 'Classes/**/*'
   s.public_header_files = 'Classes/**/*.h'
   s.dependency 'Flutter'
-  s.dependency 'WebRTC-SDK', '104.5112.06'
+  s.dependency 'WebRTC-SDK', '104.5112.02'
   s.ios.framework  = 'Intents', 'CallKit'
   s.platform = :ios, '10.0'
 
