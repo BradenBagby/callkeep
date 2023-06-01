@@ -1,17 +1,16 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/services.dart';
+
 import 'package:flutter/material.dart'
     show
         AlertDialog,
         BuildContext,
-        FlatButton,
         Navigator,
         Text,
         TextButton,
         Widget,
         showDialog;
-import 'package:flutter/services.dart' show MethodChannel;
+import 'package:flutter/services.dart' show MethodCall, MethodChannel;
 
 import 'actions.dart';
 import 'event.dart';
@@ -173,6 +172,19 @@ class FlutterCallkeep extends EventManager {
       return resp;
     }
     return false;
+  }
+
+  Future<List<String>> activeCalls() async {
+    var resp = await _channel
+        .invokeMethod<List<Object>?>('activeCalls', <String, dynamic>{});
+    if (resp != null) {
+      var uuids = <String>[];
+      resp.forEach((element) {
+        if (element is String) uuids.add(element);
+      });
+      return uuids;
+    }
+    return [];
   }
 
   Future<void> endCall(String uuid) async => await _channel
