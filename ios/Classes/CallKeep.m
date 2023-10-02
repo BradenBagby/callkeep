@@ -939,6 +939,12 @@ continueUserActivity:(NSUserActivity *)userActivity
 #ifdef DEBUG
     NSLog(@"[CallKeep][CXProviderDelegate][provider:didActivateAudioSession]");
 #endif
+
+    /// report to WebRTC
+    RTCAudioSession *session = [RTCAudioSession sharedInstance];
+    [session audioSessionDidActivate:audioSession];
+    session.isAudioEnabled = true;
+    
     [self sendDefaultAudioInterruptionNotificationToStartAudioResource];
     [self configureAudioSession];
     [self sendEventWithNameWrapper:CallKeepDidActivateAudioSession body:@{}];
