@@ -71,8 +71,8 @@ import io.wazo.callkeep.utils.ConstraintsMap;
 
 // @see https://github.com/kbagchiGWC/voice-quickstart-android/blob/9a2aff7fbe0d0a5ae9457b48e9ad408740dfb968/exampleConnectionService/src/main/java/com/twilio/voice/examples/connectionservice/VoiceConnectionService.java
 public class VoiceConnectionService extends ConnectionService {
-    private static Boolean isAvailable;
-    private static Boolean isInitialized;
+    private static Boolean isAvailable = false;
+    private static Boolean isInitialized = false;
     private static Boolean isReachable;
     private static PhoneAccountHandle phoneAccountHandle = null;
     private static final String TAG = "RNCK:VoiceConnectionService";
@@ -115,8 +115,8 @@ public class VoiceConnectionService extends ConnectionService {
         super();
         Log.e(TAG, "Constructor");
         isReachable = false;
-        isInitialized = false;
-        isAvailable = false;
+//        isInitialized = false;
+//        isAvailable = false;
         currentConnectionService = this;
     }
 
@@ -210,7 +210,6 @@ public class VoiceConnectionService extends ConnectionService {
     @Override
     public Connection onCreateOutgoingConnection(PhoneAccountHandle phoneAccount, ConnectionRequest request) {
         VoiceConnectionService.hasOutgoingCall = true;
-
         if (!isInitialized && !isReachable) {
             this.checkReachability(request);
         }
@@ -221,6 +220,7 @@ public class VoiceConnectionService extends ConnectionService {
     private Connection makeOutgoingCall(ConnectionRequest request) {
         fixMissingNumber(request.getAddress(), request.getExtras());
         fixMissingCallId(request.getExtras());
+        setAvailable(true);
         if (!wakeAndCheckAvailability(request.getExtras(), false)) {
             return Connection.createFailedConnection(new DisconnectCause(DisconnectCause.LOCAL));
         } else {
@@ -268,11 +268,7 @@ public class VoiceConnectionService extends ConnectionService {
             Log.d(TAG, "makeOngoingCall: Waking up application");
             this.wakeUpApplication(callExtras);
         }
-        if (this.canMakeOutgoingCall() && isReachable) {
-            return true;
-        }
-        Log.d(TAG, "makeOngoingCall: not available");
-        return false;
+        return true;
     }
 
     private void startForegroundService() {
