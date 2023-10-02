@@ -946,7 +946,7 @@ continueUserActivity:(NSUserActivity *)userActivity
     session.isAudioEnabled = true;
     
     [self sendDefaultAudioInterruptionNotificationToStartAudioResource];
-    [self configureAudioSession];
+    [self configureAudioSession:false];
     [self sendEventWithNameWrapper:CallKeepDidActivateAudioSession body:@{}];
 }
 
