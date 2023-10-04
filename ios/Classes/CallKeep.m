@@ -227,27 +227,27 @@ static NSObject<CallKeepPushDelegate>* _delegate;
     [RTCAudioSession sharedInstance].isAudioEnabled = false;
     
     AVAudioSession *audioSession = [AVAudioSession sharedInstance];
-        NSError* err;
-        NSLog(@"configuring audio session..");
-        [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord error:&err];
-        if (err) {
-            NSLog(@"error setting audio category %@",err);
-        }
-        [audioSession setMode:AVAudioSessionModeVoiceChat error:&err];
-        if (err) {
-            NSLog(@"error setting audio Mode %@",err);
-        }
-        double sampleRate = 44100.0;
-        [audioSession setPreferredSampleRate:sampleRate error:&err];
-        if (err) {
-            NSLog(@"Error %ld, %@",(long)err.code, err.localizedDescription);
-        }
-        
-        NSTimeInterval bufferDuration = .005;
-        [audioSession setPreferredIOBufferDuration:bufferDuration error:&err];
-        if (err) {
-            NSLog(@"Error %ld, %@",(long)err.code, err.localizedDescription);
-        }
+    NSError* err;
+    NSLog(@"configuring audio session..");
+    [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord withOptions:AVAudioSessionCategoryOptionAllowBluetooth error:&err];
+    if (err) {
+        NSLog(@"error setting audio category %@",err);
+    }
+    [audioSession setMode:AVAudioSessionModeVoiceChat error:&err];
+    if (err) {
+        NSLog(@"error setting audio Mode %@",err);
+    }
+    double sampleRate = 44100.0;
+    [audioSession setPreferredSampleRate:sampleRate error:&err];
+    if (err) {
+        NSLog(@"Error %ld, %@",(long)err.code, err.localizedDescription);
+    }
+    
+    NSTimeInterval bufferDuration = .005;
+    [audioSession setPreferredIOBufferDuration:bufferDuration error:&err];
+    if (err) {
+        NSLog(@"Error %ld, %@",(long)err.code, err.localizedDescription);
+    }
     
     /* payload example.
      {
@@ -729,18 +729,33 @@ static NSObject<CallKeepPushDelegate>* _delegate;
 - (void)configureAudioSession:(bool)setActive
 {
     NSLog(@"[CallKeep][configureAudioSession] Configuring audio session");
+
     
+    NSError* err;
     AVAudioSession* audioSession = [AVAudioSession sharedInstance];
-    [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord withOptions:AVAudioSessionCategoryOptionAllowBluetooth error:nil];
+    [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord withOptions:AVAudioSessionCategoryOptionAllowBluetooth error:&err];
+    if (err) {
+        NSLog(@"[CallKeep][configureAudioSession] error setting audio category %@",err);
+    }
     
-    [audioSession setMode:AVAudioSessionModeVoiceChat error:nil];
+    [audioSession setMode:AVAudioSessionModeVoiceChat error:&err];
+    if (err) {
+        NSLog(@"[CallKeep][configureAudioSession] error setting audio Mode %@",err);
+    }
     
     double sampleRate = 44100.0;
-    [audioSession setPreferredSampleRate:sampleRate error:nil];
+    [audioSession setPreferredSampleRate:sampleRate error:&err];
+    if (err) {
+        NSLog(@"[CallKeep][configureAudioSession] Error %ld, %@",(long)err.code, err.localizedDescription);
+    }
     
     NSTimeInterval bufferDuration = .005;
-    [audioSession setPreferredIOBufferDuration:bufferDuration error:nil];
+    [audioSession setPreferredIOBufferDuration:bufferDuration error:&err];
+    if (err) {
+        NSLog(@"[CallKeep][configureAudioSession] Error %ld, %@",(long)err.code, err.localizedDescription);
+    }
     if(setActive){
+        NSLog(@"[CallKeep][configureAudioSession] Activating audio session");
         [audioSession setActive:TRUE error:nil];
     }
 }
@@ -939,7 +954,7 @@ continueUserActivity:(NSUserActivity *)userActivity
 #ifdef DEBUG
     NSLog(@"[CallKeep][CXProviderDelegate][provider:didActivateAudioSession]");
 #endif
-
+    
     /// report to WebRTC
     RTCAudioSession *session = [RTCAudioSession sharedInstance];
     [session audioSessionDidActivate:audioSession];
