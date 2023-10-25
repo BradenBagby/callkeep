@@ -889,7 +889,6 @@ continueUserActivity:(NSUserActivity *)userActivity
 #ifdef DEBUG
     NSLog(@"[CallKeep][CXProviderDelegate][provider:performAnswerCallAction]");
 #endif
-    [self configureAudioSession:true];
     [self sendEventWithNameWrapper:CallKeepPerformAnswerCallAction body:@{ @"callUUID": [action.callUUID.UUIDString lowercaseString] }];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [action fulfill];
@@ -965,7 +964,7 @@ continueUserActivity:(NSUserActivity *)userActivity
     session.isAudioEnabled = true;
     
     [self sendDefaultAudioInterruptionNotificationToStartAudioResource];
-    [self configureAudioSession:true];
+    [self configureAudioSession:false];
     [self sendEventWithNameWrapper:CallKeepDidActivateAudioSession body:@{}];
 }
 
