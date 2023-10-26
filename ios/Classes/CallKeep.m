@@ -733,7 +733,7 @@ static NSObject<CallKeepPushDelegate>* _delegate;
     
     NSError* err;
     AVAudioSession* audioSession = [AVAudioSession sharedInstance];
-    [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord withOptions:AVAudioSessionCategoryOptionAllowBluetooth error:&err];
+    [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord withOptions:AVAudioSessionCategoryOptionAllowBluetooth | AVAudioSessionCategoryOptionAllowBluetoothA2DP | AVAudioSessionCategoryOptionDefaultToSpeaker error:&err];
     if (err) {
         NSLog(@"[CallKeep][configureAudioSession] error setting audio category %@",err);
     }
@@ -964,7 +964,7 @@ continueUserActivity:(NSUserActivity *)userActivity
     session.isAudioEnabled = true;
     
     [self sendDefaultAudioInterruptionNotificationToStartAudioResource];
-    [self configureAudioSession:false];
+    [self configureAudioSession:true];
     [self sendEventWithNameWrapper:CallKeepDidActivateAudioSession body:@{}];
 }
 
