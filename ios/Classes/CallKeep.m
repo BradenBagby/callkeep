@@ -7,7 +7,6 @@
 //
 #import <objc/runtime.h>
 #import <AVFoundation/AVFoundation.h>
-#import <WebRTC/WebRTC.h>
 
 #import "CallKeep.h"
 
@@ -222,33 +221,6 @@ static NSObject<CallKeepPushDelegate>* _delegate;
 - (void)pushRegistry:(PKPushRegistry *)registry didReceiveIncomingPushWithPayload:(PKPushPayload *)payload forType:(PKPushType)type withCompletionHandler:(nonnull void (^)(void))completion {
     // Process the received push
     NSLog(@"didReceiveIncomingPushWithPayload payload = %@", payload.type);
-    
-    [RTCAudioSession sharedInstance].useManualAudio = true;
-    [RTCAudioSession sharedInstance].isAudioEnabled = false;
-    
-    AVAudioSession *audioSession = [AVAudioSession sharedInstance];
-    NSError* err;
-    NSLog(@"configuring audio session..");
-    [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord withOptions:AVAudioSessionCategoryOptionAllowBluetooth error:&err];
-    if (err) {
-        NSLog(@"error setting audio category %@",err);
-    }
-    [audioSession setMode:AVAudioSessionModeVoiceChat error:&err];
-    if (err) {
-        NSLog(@"error setting audio Mode %@",err);
-    }
-    double sampleRate = 44100.0;
-    [audioSession setPreferredSampleRate:sampleRate error:&err];
-    if (err) {
-        NSLog(@"Error %ld, %@",(long)err.code, err.localizedDescription);
-    }
-    
-    NSTimeInterval bufferDuration = .005;
-    [audioSession setPreferredIOBufferDuration:bufferDuration error:&err];
-    if (err) {
-        NSLog(@"Error %ld, %@",(long)err.code, err.localizedDescription);
-    }
-    
     /* payload example.
      {
      "uuid": "xxxxx-xxxxx-xxxxx-xxxxx",
@@ -726,7 +698,7 @@ static NSObject<CallKeepPushDelegate>* _delegate;
     return providerConfiguration;
 }
 
-- (void)configureAudioSession:(bool)setActive
+- (void)configureAudioSession
 {
     NSLog(@"[CallKeep][configureAudioSession] Configuring audio session");
 
@@ -754,13 +726,11 @@ static NSObject<CallKeepPushDelegate>* _delegate;
     if (err) {
         NSLog(@"[CallKeep][configureAudioSession] Error %ld, %@",(long)err.code, err.localizedDescription);
     }
-    if(setActive){
         NSLog(@"[CallKeep][configureAudioSession] Activating audio session");
         [audioSession setActive:TRUE error:&err];
         if (err) {
         NSLog(@"[CallKeep][configureAudioSession] Error %ld, %@",(long)err.code, err.localizedDescription);
         }
-    }
 }
 
 + (BOOL)application:(UIApplication *)application
@@ -877,7 +847,7 @@ continueUserActivity:(NSUserActivity *)userActivity
     NSLog(@"[CallKeep][CXProviderDelegate][provider:performStartCallAction]");
 #endif
     //do this first, audio sessions are flakey
-    [self configureAudioSession:true];
+    [self configureAudioSession];
     //tell the JS to actually make the call
     [self sendEventWithNameWrapper:CallKeepDidReceiveStartCallAction body:@{ @"callUUID": [action.callUUID.UUIDString lowercaseString], @"handle": action.handle.value }];
     [action fulfill];
@@ -889,10 +859,9 @@ continueUserActivity:(NSUserActivity *)userActivity
 #ifdef DEBUG
     NSLog(@"[CallKeep][CXProviderDelegate][provider:performAnswerCallAction]");
 #endif
+    [self configureAudioSession];
     [self sendEventWithNameWrapper:CallKeepPerformAnswerCallAction body:@{ @"callUUID": [action.callUUID.UUIDString lowercaseString] }];
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [action fulfill];
-    });
+    [action fulfill];
 }
 
 // Ending incoming call
@@ -957,14 +926,8 @@ continueUserActivity:(NSUserActivity *)userActivity
 #ifdef DEBUG
     NSLog(@"[CallKeep][CXProviderDelegate][provider:didActivateAudioSession]");
 #endif
-    
-    // /// report to WebRTC
-    RTCAudioSession *session = [RTCAudioSession sharedInstance];
-    [session audioSessionDidActivate:audioSession];
-    session.isAudioEnabled = true;
-    
     [self sendDefaultAudioInterruptionNotificationToStartAudioResource];
-    [self configureAudioSession:true];
+    [self configureAudioSession];
     [self sendEventWithNameWrapper:CallKeepDidActivateAudioSession body:@{}];
 }
 
@@ -973,10 +936,6 @@ continueUserActivity:(NSUserActivity *)userActivity
 #ifdef DEBUG
     NSLog(@"[CallKeep][CXProviderDelegate][provider:didDeactivateAudioSession]");
 #endif
-    // // report to WebRTC
-    RTCAudioSession *session = [RTCAudioSession sharedInstance];
-    [session audioSessionDidDeactivate:audioSession];
-    
     [self sendEventWithNameWrapper:CallKeepDidDeactivateAudioSession body:@{}];
 }
 
