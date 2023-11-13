@@ -599,6 +599,12 @@ static NSObject<CallKeepPushDelegate>* _delegate;
             @"fromPushKit": @(fromPushKit),
             @"additionalData": payload ? payload : @"",
         }];
+        if (error == nil) {
+            // Workaround per https://forums.developer.apple.com/message/169511
+            if ([callKeep lessThanIos10_2]) {
+                [callKeep configureAudioSession];
+            }
+        }
         if (completion != nil) {
             completion();
         }
@@ -726,11 +732,11 @@ static NSObject<CallKeepPushDelegate>* _delegate;
     if (err) {
         NSLog(@"[CallKeep][configureAudioSession] Error %ld, %@",(long)err.code, err.localizedDescription);
     }
-        NSLog(@"[CallKeep][configureAudioSession] Activating audio session");
-        [audioSession setActive:TRUE error:&err];
-        if (err) {
+    NSLog(@"[CallKeep][configureAudioSession] Activating audio session");
+    [audioSession setActive:TRUE error:&err];
+    if (err) {
         NSLog(@"[CallKeep][configureAudioSession] Error %ld, %@",(long)err.code, err.localizedDescription);
-        }
+    }
 }
 
 + (BOOL)application:(UIApplication *)application
