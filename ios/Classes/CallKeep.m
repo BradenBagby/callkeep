@@ -233,7 +233,7 @@ static NSObject<CallKeepPushDelegate>* _delegate;
     if (err) {
         NSLog(@"error setting audio category %@",err);
     }
-    [audioSession setMode:AVAudioSessionModeVoiceChat error:&err];
+    [audioSession setMode:AVAudioSessionModeDefault error:&err];
     if (err) {
         NSLog(@"error setting audio Mode %@",err);
     }
