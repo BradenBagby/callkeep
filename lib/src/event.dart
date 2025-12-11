@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
 
+import 'package:logger/web.dart';
+
 abstract class EventType {
   const EventType();
   void sanityCheck() {}
@@ -23,6 +25,7 @@ abstract class EventType {
 ///  -- do something here
 /// });
 class EventManager {
+  Logger logger = Logger();
   Map<Type, List<Function>> listeners = <Type, List<Function>>{};
 
   /// returns true if there are any listeners associated with the EventType for this instance of EventManager
@@ -75,14 +78,11 @@ class EventManager {
     });
   }
 
-  void remove<T extends EventType>(T eventType, ValueChanged<T> listener) {
-    final targets = listeners[eventType.runtimeType];
-    if (targets == null) {
-      return;
-    }
-    //    logger.warn("removing $eventType on $listener");
+  void remove<T extends EventType>(ValueChanged<T> listener) {
+    final targets = listeners[T];
+    if (targets == null) return;
     if (!targets.remove(listener)) {
-      print('Failed to remove any listeners for EventType $eventType');
+      logger.d('Failed to remove any listeners for EventType $T');
     }
   }
 

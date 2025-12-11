@@ -2,8 +2,8 @@
 
 [![Financial Contributors on Open Collective](https://opencollective.com/flutter-webrtc/all/badge.svg?label=financial+contributors)](https://opencollective.com/flutter-webrtc) [![pub package](https://img.shields.io/pub/v/callkeep.svg)](https://pub.dartlang.org/packages/callkeep) [![slack](https://img.shields.io/badge/join-us%20on%20slack-gray.svg?longCache=true&logo=slack&colorB=brightgreen)](https://join.slack.com/t/flutterwebrtc/shared_invite/zt-q83o7y1s-FExGLWEvtkPKM8ku_F8cEQ)
 
-* iOS CallKit and Android ConnectionService for Flutter
-* Support FCM and PushKit
+- iOS CallKit and Android ConnectionService for Flutter
+- Support FCM and PushKit
 
 > Keep in mind Callkit is banned in China, so if you want your app in the chinese AppStore consider include a basic alternative for notifying calls (ex. FCM notifications with sound).
 
@@ -20,27 +20,51 @@ This allows you (for example) to answer calls when your device is locked even if
 Basic configuration. In Android a popup is displayed before starting requesting some permissions to work properly.
 
 ```dart
-final callSetup = <String, dynamic>{
-  'ios': {
-    'appName': 'CallKeepDemo',
-  },
-  'android': {
-    'alertTitle': 'Permissions required',
-    'alertDescription':
-    'This application needs to access your phone accounts',
-    'cancelButton': 'Cancel',
-    'okButton': 'ok',
-    // Required to get audio in background when using Android 11
-    'foregroundService': {
-      'channelId': 'com.company.my',
-      'channelName': 'Foreground service for my app',
-      'notificationTitle': 'My app is running on background',
-      'notificationIcon': 'mipmap/ic_notification_launcher',
-    }, 
-  },
-};
+callKeep.setup(
+    showAlertDialog:  () async {
+        final BuildContext context = navigatorKey.currentContext!;
 
-callKeep.setup(callSetup);
+        return await showDialog<bool>(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text('Permissions Required'),
+                  content: const Text(
+                      'This application needs to access your phone accounts'),
+                  actions: <Widget>[
+                    TextButton(
+                      child: const Text('Cancel'),
+                      onPressed: () => Navigator.of(context).pop(false),
+                    ),
+                    TextButton(
+                      child: const Text('OK'),
+                      onPressed: () => Navigator.of(context).pop(true),
+                    ),
+                  ],
+                );
+              },
+            ) ??
+            false;
+    },
+    options:<String, dynamic>{
+        'ios': {
+            'appName': 'CallKeepDemo',
+        },
+        'android': {
+            'additionalPermissions': [
+                'android.permission.CALL_PHONE',
+                'android.permission.READ_PHONE_NUMBERS'
+            ],
+            // Required to get audio in background when using Android 11
+            'foregroundService': {
+            'channelId': 'com.company.my',
+            'channelName': 'Foreground service for my app',
+            'notificationTitle': 'My app is running on background',
+            'notificationIcon': 'mipmap/ic_notification_launcher',
+        },
+    },
+});
 ```
 
 This configuration should be defined when your application wakes up, but keep in mind this alert will appear if you aren't granting the needed permissions yet.
@@ -53,7 +77,7 @@ Callkeep offers some events to handle native actions during a call.
 
 These events are quite crucial because they act as an intermediate between the native calling UI and your call P-C-M.
 
-What does it mean? 
+What does it mean?
 
 Assuming your application already implements some calling system (RTC, Voip, or whatever) with its own calling UI, you are using some basic controls:
 
@@ -72,32 +96,37 @@ Assuming your application already implements some calling system (RTC, Voip, or 
 Then you handle the action:
 
 ```dart
-Function(CallKeepPerformAnswerCallAction) answerAction = (event) async {
+Future<void> answerCall(CallKeepPerformAnswerCallAction event) async {
     print('CallKeepPerformAnswerCallAction ${event.callUUID}');
     // notify to your call P-C-M the answer action
 };
 
-Function(CallKeepPerformEndCallAction) endAction = (event) async {
+ Future<void> endCall(CallKeepPerformEndCallAction event) async {
     print('CallKeepPerformEndCallAction ${event.callUUID}');
     // notify to your call P-C-M the end action
 };
 
-Function(CallKeepDidPerformSetMutedCallAction) setMuted = (event) async {
+Future<void> didPerformSetMutedCallAction(CallKeepDidPerformSetMutedCallAction event) async {
     print('CallKeepDidPerformSetMutedCallAction ${event.callUUID}');
     // notify to your call P-C-M the muted switch action
 };
 
-Function(CallKeepDidToggleHoldAction) onHold = (event) async {
+ Future<void> didToggleHoldCallAction(CallKeepDidToggleHoldAction event) async {
     print('CallKeepDidToggleHoldAction ${event.callUUID}');
     // notify to your call P-C-M the hold switch action
 };
 ```
 
 ```dart
-callKeep.on(CallKeepDidToggleHoldAction(), onHold);
-callKeep.on(CallKeepPerformAnswerCallAction(), answerAction);
-callKeep.on(CallKeepPerformEndCallAction(), endAction);
-callKeep.on(CallKeepDidPerformSetMutedCallAction(), setMuted);
+
+ @override
+  void initState() {
+    super.initState();
+    callKeep.on<CallKeepDidDisplayIncomingCall>(didDisplayIncomingCall);
+    callKeep.on<CallKeepPerformAnswerCallAction>(answerCall);
+    callKeep.on<CallKeepPerformEndCallAction>(endCall);
+    callKeep.on<CallKeepDidToggleHoldAction>(didToggleHoldCallAction);
+  }
 ```
 
 ## Display incoming calls in foreground, background or terminate state
@@ -120,7 +149,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       print(e);
     }
   }
-  
+
   // then process your remote message looking for some call uuid
   // and display any incoming call
 }
@@ -134,11 +163,11 @@ A payload data example:
 
 ```json
 {
-    "uuid": "xxxxx-xxxxx-xxxxx-xxxxx",
-    "caller_id": "+0123456789",
-    "caller_name": "Draco",
-    "caller_id_type": "number", 
-    "has_video": "false"
+  "uuid": "xxxxx-xxxxx-xxxxx-xxxxx",
+  "caller_id": "+0123456789",
+  "caller_name": "Draco",
+  "caller_id_type": "number",
+  "has_video": "false"
 }
 ```
 
@@ -172,11 +201,11 @@ Future<void> showIncomingCall(
   var callerName = remoteMessage.payload()["caller_name"] as String;
   var uuid = remoteMessage.payload()["uuid"] as String;
   var hasVideo = remoteMessage.payload()["has_video"] == "true";
-  
-  callKeep.on(CallKeepDidToggleHoldAction(), onHold);
-  callKeep.on(CallKeepPerformAnswerCallAction(), answerAction);
-  callKeep.on(CallKeepPerformEndCallAction(), endAction);
-  callKeep.on(CallKeepDidPerformSetMutedCallAction(), setMuted);
+
+  callKeep.on<CallKeepDidToggleHoldAction>(onHold);
+  callKeep.on<CallKeepPerformAnswerCallAction>(answerAction);
+  callKeep.on<CallKeepPerformEndCallAction>(endAction);
+  callKeep.on<CallKeepDidPerformSetMutedCallAction>(setMuted);
 
   print('backgroundMessage: displayIncomingCall ($uuid)');
 
@@ -207,6 +236,40 @@ Future<void> closeIncomingCall(
 }
 ```
 
+Pass in your own dialog UI for permissions alerts
+
+````dart
+showAlertDialog: () async {
+        final BuildContext context = navigatorKey.currentContext!;
+
+        return await showDialog<bool>(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text('Permissions Required'),
+                  content: const Text(
+                      'This application needs to access your phone accounts'),
+                  actions: <Widget>[
+                    TextButton(
+                      child: const Text('Cancel'),
+                      onPressed: () => Navigator.of(context).pop(false),
+                    ),
+                    TextButton(
+                      child: const Text('OK'),
+                      onPressed: () => Navigator.of(context).pop(true),
+                    ),
+                  ],
+                );
+              },
+            ) ??
+            false;
+      },
+```
+
+
+
+
 ### FAQ
 
 > I don't receive the incoming call
@@ -216,9 +279,9 @@ Remember FCM push messages not always works due to data-only messages are classi
 
 > How can I manage the call if the app is terminated and the device is locked?
 
-Even in this scenario, the `backToForeground()` method will open the app and your call P-C-M will be able to work. 
-
+Even in this scenario, the `backToForeground()` method will open the app and your call P-C-M will be able to work.
 
 ## push test tool
 
 Please refer to the [Push Toolkit](/tools/) to test callkeep offline push.
+````
